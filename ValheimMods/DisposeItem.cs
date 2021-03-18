@@ -30,7 +30,18 @@ namespace ValheimMods
                 if (___m_dragItem != null && ___m_dragInventory.ContainsItem(___m_dragItem))
                 {
                     Debug.Log($"Dragging {___m_dragAmount}/{___m_dragItem.m_stack} {___m_dragItem.m_dropPrefab.name}");
+
+                    MessageHud.instance.ShowMessage(MessageHud.MessageType.Center, "My name a Jeff.");
                 }
+            }
+        }
+
+        [HarmonyPatch(typeof(Player), "IsEncumbered")]
+        static class NeverEncumbered
+        {
+            static void Postfix(ref bool __result)
+            {
+                __result = false;
             }
         }
     }
