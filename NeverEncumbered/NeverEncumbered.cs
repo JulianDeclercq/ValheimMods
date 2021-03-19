@@ -1,4 +1,5 @@
 ﻿using BepInEx;
+using BepInEx.Configuration;
 using HarmonyLib;
 using System.Reflection;
 using UnityEngine;
@@ -6,11 +7,15 @@ using UnityEngine;
 namespace ValheimMods
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.NeverEncumbered", "Never Encumbered", "1.0.0.0")]
+    [BepInPlugin("juliandeclercq.NeverEncumbered", "Never Encumbered", "1.0.0.2")]
     public class NeverEncumbered : BaseUnityPlugin
     {
+        private static ConfigEntry<bool> _neverEncumbered;
+        private static ConfigEntry<bool> _autoPickupPastWeightlimit;
         private void Awake()
         {
+            _neverEncumbered = Config.Bind("General", "Never encumbered", true, "Never become encumbered");
+            _autoPickupPastWeightlimit = Config.Bind("General", "Auto pickup past weight limit", true, "Autopickup even if the weight limit has been passed");
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
         }
 
@@ -19,7 +24,8 @@ namespace ValheimMods
         {
             static void Postfix(ref bool __result)
             {
-                __result = false;
+                if (_neverEncumbered.Value)
+                    __result = false;
             }
         }
 
@@ -28,6 +34,9 @@ namespace ValheimMods
         {
             static void Postfix(float dt, Player __instance, Inventory ___m_inventory, float ___m_autoPickupRange, int ___m_autoPickupMask)
             {
+                if (!_autoPickupPastWeightlimit.Value)
+                    return;
+
                 if (__instance.IsTeleporting())
                 {
                     return;

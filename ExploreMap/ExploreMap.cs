@@ -8,7 +8,7 @@ using UnityEngine;
 namespace ExploreMap
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.ExploreMap", "Explore Map", "1.0.0.0")]
+    [BepInPlugin("juliandeclercq.ExploreMap", "Explore Map", "1.0.0.1")]
     public class ExploreMap : BaseUnityPlugin
     {
         private static string _cachedPath = string.Empty;
@@ -48,10 +48,8 @@ namespace ExploreMap
                 if (_loadOriginalMap.Value)
                 {
                     if (!File.Exists(_cachedPath))
-                    {
-                        Debug.LogWarning($"Couldn't load saved map from file {_cachedPath}, file doesn't exist.");
                         return;
-                    }
+                    
                     var data = File.ReadAllBytes(_cachedPath);
                     Traverse.Create(__instance).Method("SetMapData", data).GetValue(); // getvalue is to ensure the method gets invoked
 
