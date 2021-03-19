@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ValheimMods", "ValheimMods.csproj", "{2C77D247-3BD3-4D1F-88BC-EE110E3C9FB3}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NeverEncumbered", "NeverEncumbered.csproj", "{2C77D247-3BD3-4D1F-88BC-EE110E3C9FB3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExploreMap", "..\ExploreMap\ExploreMap.csproj", "{66BC22BC-FA62-4DFB-9413-49F780D331B0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{2C77D247-3BD3-4D1F-88BC-EE110E3C9FB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2C77D247-3BD3-4D1F-88BC-EE110E3C9FB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2C77D247-3BD3-4D1F-88BC-EE110E3C9FB3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{66BC22BC-FA62-4DFB-9413-49F780D331B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{66BC22BC-FA62-4DFB-9413-49F780D331B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{66BC22BC-FA62-4DFB-9413-49F780D331B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{66BC22BC-FA62-4DFB-9413-49F780D331B0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
