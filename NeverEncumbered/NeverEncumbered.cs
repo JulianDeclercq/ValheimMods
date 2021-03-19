@@ -39,7 +39,6 @@ namespace ValheimMods
                     var rb = val.attachedRigidbody;
                     if (rb == null)
                     {
-                        Debug.Log($"Collider {val.gameObject.name} had no rigidbody attached, skipping");
                         continue;
                     }
                     
