@@ -8,7 +8,7 @@ using UnityEngine;
 namespace ExploreMap
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.ExploreMap", "Explore Map", "1.0.0.1")]
+    [BepInPlugin("juliandeclercq.ExploreMap", "Explore Map", "1.0.1.0")]
     public class ExploreMap : BaseUnityPlugin
     {
         private static string _cachedPath = string.Empty;
@@ -89,7 +89,7 @@ namespace ExploreMap
         [HarmonyPatch(typeof(Console), "InputText")]
         static class InputText_Patch
         {
-            const string command = "explore map reset";
+            const string command = "toggle full map";
             static void Prefix(Console __instance)
             {
                 string cmd = __instance.m_input.text;
@@ -102,7 +102,11 @@ namespace ExploreMap
 
                 if (cmd.ToLower().Equals(command.ToLower()))
                 {
-                    LoadOriginalMap();
+                    _exploreFullMap.Value = !_exploreFullMap.Value;
+
+                    if (!_exploreFullMap.Value)
+                        LoadOriginalMap();
+
                     Traverse.Create(__instance).Method("AddString", new object[] { cmd }).GetValue();
                     Traverse.Create(__instance).Method("AddString", new object[] { "reloaded original map" }).GetValue();
                 }
