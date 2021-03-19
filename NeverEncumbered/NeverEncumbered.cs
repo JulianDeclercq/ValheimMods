@@ -7,7 +7,7 @@ using UnityEngine;
 namespace ValheimMods
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.NeverEncumbered", "Never Encumbered", "1.0.0.2")]
+    [BepInPlugin("juliandeclercq.NeverEncumbered", "Never Encumbered", "1.0.2")]
     public class NeverEncumbered : BaseUnityPlugin
     {
         private static ConfigEntry<bool> _neverEncumbered;
@@ -89,6 +89,37 @@ namespace ValheimMods
                         float num2 = 15f;
                         component.transform.position = component.transform.position + vector2 * num2 * dt;
                     }
+                }
+            }
+        }
+
+        [HarmonyPatch(typeof(Console), "InputText")]
+        static class InputText_Patch
+        {
+            const string commandEncumber = "toggle encumber";
+            const string commandAutopickup = "toggle autopickuppastlimit";
+            static void Prefix(Console __instance)
+            {
+                string cmd = __instance.m_input.text;
+
+                if (cmd.StartsWith("help"))
+                {
+                    Traverse.Create(__instance).Method("AddString", new object[] { commandEncumber }).GetValue();
+                    Traverse.Create(__instance).Method("AddString", new object[] { commandAutopickup }).GetValue();
+                    return;
+                }
+
+                if (cmd.ToLower().Equals(commandEncumber.ToLower()))
+                {
+                    _neverEncumbered.Value = !_neverEncumbered.Value;
+
+                    Traverse.Create(__instance).Method("AddString", new object[] { $"toggled encumber ({!_neverEncumbered.Value})" }).GetValue(); // flip for "never" keyword
+                }
+                else if (cmd.ToLower().Equals(commandAutopickup.ToLower()))
+                {
+                    _autoPickupPastWeightlimit.Value = !_autoPickupPastWeightlimit.Value;
+
+                    Traverse.Create(__instance).Method("AddString", new object[] { $"toggled autopickuppastlimit ({_autoPickupPastWeightlimit.Value})" }).GetValue();
                 }
             }
         }

@@ -107,7 +107,6 @@ namespace ExploreMap
                     if (!_exploreFullMap.Value)
                         LoadOriginalMap();
 
-                    Traverse.Create(__instance).Method("AddString", new object[] { cmd }).GetValue();
                     Traverse.Create(__instance).Method("AddString", new object[] { "reloaded original map" }).GetValue();
                 }
             }
