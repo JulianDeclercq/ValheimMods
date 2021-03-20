@@ -1,6 +1,8 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
+using System;
+using System.Collections;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
@@ -8,26 +10,61 @@ using UnityEngine;
 namespace ExploreMap
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.ExploreMap", "Explore Map", "1.0.1.0")]
+    [BepInPlugin("juliandeclercq.ExploreMap", "Explore Map", "1.0.2.0")]
     public class ExploreMap : BaseUnityPlugin
     {
+        private static BaseUnityPlugin instance;
         private static string _cachedPath = string.Empty;
         public static Minimap _miniMap = null;
         private static ConfigEntry<bool> _exploreFullMap;
+        private static ConfigEntry<string> _toggleHotkey;
+        private static KeyCode _toggleHotkeyKeyCode;
         private void Awake()
         {
+            instance = this;
             _exploreFullMap = Config.Bind("General", "Explore full map", true , "explore the full map");
+            _toggleHotkey = Config.Bind("Hotkeys", "Toggle explore full map hotkey", "F6", "The hotkey that toggles showing the full map, for a full list of available keys visit https://docs.unity3d.com/ScriptReference/KeyCode.html");
+            _toggleHotkeyKeyCode = (KeyCode)Enum.Parse(typeof(KeyCode), _toggleHotkey.Value);
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
+        }
+
+        private void Update()
+        {
+            if (Input.GetKeyDown(_toggleHotkeyKeyCode))
+            {
+                // ignore input in certain cases
+                if (ZNetScene.instance == null || Player.m_localPlayer == null || Console.IsVisible() || TextInput.IsVisible() || ZNet.instance.InPasswordDialog() || Chat.instance?.HasFocus() == true)
+                    return;
+
+                ExploreMapToggle();
+            }
         }
 
         private static void LoadOriginalMap()
         {
+            instance.StartCoroutine(LoadOriginalMapCoroutine());
+        }
+
+        private static IEnumerator LoadOriginalMapCoroutine()
+        {
             if (_miniMap == null || !File.Exists(_cachedPath))
-                return;
+                yield break;
 
             _exploreFullMap.Value = false;
 
             var data = File.ReadAllBytes(_cachedPath);
+
+            // hide the map to prevent a nasty icon bug
+            FieldInfo modeField = _miniMap.GetType().GetField("m_mode", BindingFlags.NonPublic | BindingFlags.Instance);
+            object mapModeNone = _miniMap.GetType().GetNestedType("MapMode", BindingFlags.NonPublic).GetField("None").GetValue(_miniMap);
+
+            // recreate Minimap::SetMapMode() functionality with parameter MapMode.None
+            modeField.SetValue(_miniMap, mapModeNone);
+            _miniMap.m_largeRoot.SetActive(false);
+            _miniMap.m_smallRoot.SetActive(false);
+
+            yield return new WaitForEndOfFrame();
+
             Traverse.Create(_miniMap).Method("SetMapData", data).GetValue(); // getvalue is to ensure the method gets invoked
 
             // delete the saved map
@@ -102,14 +139,20 @@ namespace ExploreMap
 
                 if (cmd.ToLower().Equals(command.ToLower()))
                 {
-                    _exploreFullMap.Value = !_exploreFullMap.Value;
-
-                    if (!_exploreFullMap.Value)
-                        LoadOriginalMap();
-
-                    Traverse.Create(__instance).Method("AddString", new object[] { "reloaded original map" }).GetValue();
+                    ExploreMapToggle();
+                    Traverse.Create(__instance).Method("AddString", new object[] { "Explore map toggled" }).GetValue();
                 }
             }
+        }
+
+        private static void ExploreMapToggle()
+        {
+            _exploreFullMap.Value = !_exploreFullMap.Value;
+
+            if (!_exploreFullMap.Value)
+                LoadOriginalMap();
+
+            Debug.Log("Explore map toggled");
         }
     }
 }
