@@ -3,6 +3,7 @@ using BepInEx.Configuration;
 using HarmonyLib;
 using System.Reflection;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace ValheimMods
 {
@@ -12,10 +13,12 @@ namespace ValheimMods
     {
         private static ConfigEntry<bool> _neverEncumbered;
         private static ConfigEntry<bool> _autoPickupPastWeightlimit;
+        private static ConfigEntry<bool> _encumberedUIFlicker;
         private void Awake()
         {
             _neverEncumbered = Config.Bind("General", "Never encumbered", true, "Never become encumbered");
             _autoPickupPastWeightlimit = Config.Bind("General", "Auto pickup past weight limit", true, "Autopickup even if the weight limit has been passed");
+            _encumberedUIFlicker = Config.Bind("General", "Inventory weight UI flicker", false, "Show the red UI flicker when over the weightlimit like the original");
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
         }
 
@@ -121,6 +124,23 @@ namespace ValheimMods
 
                     Traverse.Create(__instance).Method("AddString", new object[] { $"toggled autopickuppastlimit ({_autoPickupPastWeightlimit.Value})" }).GetValue();
                 }
+            }
+        }
+
+        // Disable flickering
+        [HarmonyPatch(typeof(InventoryGui), "UpdateInventoryWeight")]
+        static class UpdateInventoryWeight_Patch
+        {
+            static bool Prefix(Player player, Text ___m_weight)
+            {
+                if (_encumberedUIFlicker.Value)
+                    return true; // let the original method run
+
+                // disable the flicker
+                int num = Mathf.CeilToInt(player.GetInventory().GetTotalWeight());
+                int num2 = Mathf.CeilToInt(player.GetMaxCarryWeight());
+                ___m_weight.text = num + "/" + num2;
+                return false; // stop executing prefixes and skip the original
             }
         }
     }
