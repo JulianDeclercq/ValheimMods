@@ -94,7 +94,6 @@ namespace ExploreMap
 
                     // create the final path
                     _cachedPath = Path.Combine(targetPath, fileName);
-                    Debug.LogError($"cachedPath set to {_cachedPath}");
                 }
 
                 // if a saved map exists, the map has been fully explored before

@@ -1,12 +1,8 @@
 ﻿using BepInEx;
+using BepInEx.Configuration;
 using HarmonyLib;
-using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEngine;
 
 namespace SafeDeath
 {
@@ -14,8 +10,14 @@ namespace SafeDeath
     [BepInPlugin("juliandeclercq.SafeDeath", "Safe Death", "1.1.0")]
     public class SafeDeath : BaseUnityPlugin
     {
+        private static ConfigEntry<bool> _skillLoss;
+        private static ConfigEntry<bool> _foodLoss;
+        private static ConfigEntry<bool> _itemLoss;
         private void Awake()
         {
+            _skillLoss = Config.Bind("General", "Skill loss", false, "Lose skill / skill progression on death");
+            _foodLoss = Config.Bind("General", "Food loss", false, "Lose food on death");
+            _itemLoss = Config.Bind("General", "Item loss", false, "Lose items on death");
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
         }
 
@@ -29,22 +31,37 @@ namespace SafeDeath
                 Inventory savedInventory = new Inventory("SavedInventory", null, invent.GetWidth(), invent.GetHeight());
                 savedInventory.MoveAll(invent);
                 __state = savedInventory;
-                return false; // stop executing prefixes and skip the original
+
+                if (_itemLoss.Value)
+                {
+                    return true; // execute the prefixes and the original
+                }
+                else
+                {
+                    return false; // stop executing prefixes and skip the original
+                }
             }
 
             static void Postfix(Player __instance, Inventory __state)
             {
+                if (_itemLoss.Value)
+                    return;
+
                 var invent = __instance.GetInventory();
                 invent.MoveAll(__state);
             }
         }
 
+        // HardDeath means skill loss
         [HarmonyPatch(typeof(Player), "HardDeath")]
         static class HardDeathPatch
         {
             static bool Prefix(ref bool __result)
             {
-                __result = false;
+                if (_skillLoss.Value)
+                    return true; // let the original run after the prefix
+
+                __result = false; // disable hard death and therefore skill loss
                 return false; // stop executing prefixes and skip the original
             }
         }
@@ -59,6 +76,9 @@ namespace SafeDeath
 
             static void Postfix(ref List<Player.Food> ___m_foods, List<Player.Food> __state)
             {
+                if (_foodLoss.Value)
+                    return;
+
                 ___m_foods = __state;
             }
         }
