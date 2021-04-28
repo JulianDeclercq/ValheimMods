@@ -1,8 +1,10 @@
 ﻿using BepInEx;
 using BepInEx.Configuration;
+using EquipmentAndQuickSlots;
 using HarmonyLib;
 using System.Collections.Generic;
 using System.Reflection;
+using UnityEngine;
 
 namespace SafeDeath
 {
@@ -13,6 +15,7 @@ namespace SafeDeath
         private static ConfigEntry<bool> _skillLoss;
         private static ConfigEntry<bool> _foodLoss;
         private static ConfigEntry<bool> _itemLoss;
+        private static Inventory _SAVEME = null;
         private void Awake()
         {
             _skillLoss = Config.Bind("General", "Skill loss", false, "Lose skill / skill progression on death");
@@ -21,25 +24,49 @@ namespace SafeDeath
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
         }
 
+        private void Update()
+        {
+            //if (Input.GetKeyDown(KeyCode.F9))
+            //{
+            //    LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
+            //    var p = Player.m_localPlayer;
+            //    p.GetInventory().MoveAll(p.GetQuickSlotInventory());
+            //    LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
+            //}
+
+            if (Input.GetKeyDown(KeyCode.F10))
+            {
+                LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
+            }
+        }
+
+        private static void LogInventory(Inventory inventory, string name)
+        {
+            Debug.Log($"{name} inventory item count: {inventory.GetAllItems().Count}");
+
+            foreach (var quickslot in inventory.GetAllItems()) // TODO: Print length etc. see if this is actually empty or not
+            {
+                Debug.Log($"{name} item: {quickslot.m_shared.m_name}");
+            }
+        }
+
         [HarmonyPatch(typeof(Player), "CreateTombStone")]
         static class CreateTombStonePatch
         {
             static bool Prefix(Player __instance, out Inventory __state)
             {
+                if (_itemLoss.Value)
+                {
+                    __state = null;
+                    return true; // execute the prefixes and the original
+                }
+
                 var invent = __instance.GetInventory();
-                
                 Inventory savedInventory = new Inventory("SavedInventory", null, invent.GetWidth(), invent.GetHeight());
                 savedInventory.MoveAll(invent);
                 __state = savedInventory;
 
-                if (_itemLoss.Value)
-                {
-                    return true; // execute the prefixes and the original
-                }
-                else
-                {
-                    return false; // stop executing prefixes and skip the original
-                }
+                return false; // stop executing prefixes and skip the original, this might cause compatibility problems with other mods (depending on which .dll gets loaded first) but is needed to skip gravestones from the original game. Might need manual involvement.
             }
 
             static void Postfix(Player __instance, Inventory __state)
@@ -69,17 +96,79 @@ namespace SafeDeath
         [HarmonyPatch(typeof(Player), "OnDeath")]
         static class OnDeathPatch
         {
-            static void Prefix(List<Player.Food> ___m_foods, out List<Player.Food> __state)
+            private class CustomState
             {
-                __state = new List<Player.Food>(___m_foods);
+                public List<Player.Food> Foods;
+                public Inventory QuickSlotsInventory;
             }
 
-            static void Postfix(ref List<Player.Food> ___m_foods, List<Player.Food> __state)
+            static void Prefix(Player __instance, List<Player.Food> ___m_foods, out CustomState __state)
             {
-                if (_foodLoss.Value)
-                    return;
+                var quickslots = __instance.GetQuickSlotInventory();
 
-                ___m_foods = __state;
+                LogInventory(quickslots, "quickslots");
+
+                Inventory savedQuickslots = new Inventory("SavedQuickslots", null, quickslots.GetWidth(), quickslots.GetHeight());
+                savedQuickslots.MoveAll(quickslots); // "Item is not in this Inventory" message. current idea is that it is probably in the player inventory itself but the reference of the data is shared in the quickslotinventory
+
+                LogInventory(quickslots, "quickslots");
+                LogInventory(savedQuickslots, "savedQuickslots");
+
+                __state = new CustomState
+                {
+                    Foods = new List<Player.Food>(___m_foods),
+                    QuickSlotsInventory = savedQuickslots
+                };
+
+                _SAVEME = savedQuickslots;
+            }
+
+            static void Postfix(Player __instance, ref List<Player.Food> ___m_foods, CustomState __state)
+            {
+                //Debug.Log($"OnDeath POST fix");
+                //if (!_itemLoss.Value)
+                //{
+                //    LogInventory(__instance.GetQuickSlotInventory(), "quickslots");
+                //    LogInventory(__state.QuickSlotsInventory, "savedQuickslots from state");
+
+                //    Debug.Log($"OnDeath POST fix MOVING");
+
+                //    __instance.GetQuickSlotInventory().MoveAll(__state.QuickSlotsInventory);
+                //    __instance.Extended().Save();
+
+                //    LogInventory(__instance.GetQuickSlotInventory(), "quickslots");
+                //    LogInventory(__state.QuickSlotsInventory, "savedQuickslots from state");
+                //}
+
+                if (!_foodLoss.Value)
+                {
+                    ___m_foods = __state.Foods;
+                }
+            }
+        }
+
+        // Warning: ugly hack because it wasn't working
+        [HarmonyPatch(typeof(Game), "SpawnPlayer")]
+        static class SpawnPlayerPatch
+        {
+            static void Postfix()
+            {
+                Debug.Log($"SpawnPlayer BEFORE check");
+                if (!_itemLoss.Value && _SAVEME != null)
+                {
+                    Debug.Log($"SpawnPlayer AFTER check");
+
+                    LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
+                    LogInventory(_SAVEME, "_SAVEME");
+
+                    Debug.Log($"OnDeath POST fix MOVING");
+
+                    Player.m_localPlayer.GetQuickSlotInventory().MoveAll(_SAVEME);
+                    Player.m_localPlayer.Extended().Save();
+
+                    LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
+                    LogInventory(_SAVEME, "_SAVEME");
+                }
             }
         }
     }
