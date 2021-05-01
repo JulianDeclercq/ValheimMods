@@ -15,7 +15,7 @@ namespace SafeDeath
         private static ConfigEntry<bool> _skillLoss;
         private static ConfigEntry<bool> _foodLoss;
         private static ConfigEntry<bool> _itemLoss;
-        private static Inventory _SAVEME = null;
+        private static Inventory _quickslotInventoryOnDeath = null;
         private void Awake()
         {
             _skillLoss = Config.Bind("General", "Skill loss", false, "Lose skill / skill progression on death");
@@ -26,28 +26,16 @@ namespace SafeDeath
 
         private void Update()
         {
-            //if (Input.GetKeyDown(KeyCode.F9))
-            //{
-            //    LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
-            //    var p = Player.m_localPlayer;
-            //    p.GetInventory().MoveAll(p.GetQuickSlotInventory());
-            //    LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
-            //}
-
             if (Input.GetKeyDown(KeyCode.F10))
-            {
                 LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
-            }
         }
 
         private static void LogInventory(Inventory inventory, string name)
         {
             Debug.Log($"{name} inventory item count: {inventory.GetAllItems().Count}");
 
-            foreach (var quickslot in inventory.GetAllItems()) // TODO: Print length etc. see if this is actually empty or not
-            {
+            foreach (var quickslot in inventory.GetAllItems())
                 Debug.Log($"{name} item: {quickslot.m_shared.m_name}");
-            }
         }
 
         [HarmonyPatch(typeof(Player), "CreateTombStone")]
@@ -120,30 +108,13 @@ namespace SafeDeath
                     QuickSlotsInventory = savedQuickslots
                 };
 
-                _SAVEME = savedQuickslots;
+                _quickslotInventoryOnDeath = savedQuickslots;
             }
 
             static void Postfix(Player __instance, ref List<Player.Food> ___m_foods, CustomState __state)
             {
-                //Debug.Log($"OnDeath POST fix");
-                //if (!_itemLoss.Value)
-                //{
-                //    LogInventory(__instance.GetQuickSlotInventory(), "quickslots");
-                //    LogInventory(__state.QuickSlotsInventory, "savedQuickslots from state");
-
-                //    Debug.Log($"OnDeath POST fix MOVING");
-
-                //    __instance.GetQuickSlotInventory().MoveAll(__state.QuickSlotsInventory);
-                //    __instance.Extended().Save();
-
-                //    LogInventory(__instance.GetQuickSlotInventory(), "quickslots");
-                //    LogInventory(__state.QuickSlotsInventory, "savedQuickslots from state");
-                //}
-
                 if (!_foodLoss.Value)
-                {
                     ___m_foods = __state.Foods;
-                }
             }
         }
 
@@ -154,20 +125,21 @@ namespace SafeDeath
             static void Postfix()
             {
                 Debug.Log($"SpawnPlayer BEFORE check");
-                if (!_itemLoss.Value && _SAVEME != null)
+                if (!_itemLoss.Value && _quickslotInventoryOnDeath != null)
                 {
                     Debug.Log($"SpawnPlayer AFTER check");
 
                     LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
-                    LogInventory(_SAVEME, "_SAVEME");
+                    LogInventory(_quickslotInventoryOnDeath, "_SAVEME");
 
                     Debug.Log($"OnDeath POST fix MOVING");
 
-                    Player.m_localPlayer.GetQuickSlotInventory().MoveAll(_SAVEME);
+                    Player.m_localPlayer.GetQuickSlotInventory().MoveAll(_quickslotInventoryOnDeath);
                     Player.m_localPlayer.Extended().Save();
+                    //_quickslotInventoryOnDeath = null;
 
                     LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
-                    LogInventory(_SAVEME, "_SAVEME");
+                    LogInventory(_quickslotInventoryOnDeath, "_SAVEME");
                 }
             }
         }
