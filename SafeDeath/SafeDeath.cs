@@ -9,7 +9,7 @@ using UnityEngine;
 namespace SafeDeath
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.SafeDeath", "Safe Death", "1.1.0")]
+    [BepInPlugin("juliandeclercq.SafeDeath", "Safe Death", "1.2.0")]
     public class SafeDeath : BaseUnityPlugin
     {
         private static ConfigEntry<bool> _skillLoss;
