@@ -9,14 +9,13 @@ using UnityEngine;
 namespace SafeDeath
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.SafeDeath", "Safe Death", "1.2.0")]
+    [BepInPlugin("juliandeclercq.SafeDeath", "Safe Death", "1.2.1")]
     public class SafeDeath : BaseUnityPlugin
     {
         private static ConfigEntry<bool> _skillLoss;
         private static ConfigEntry<bool> _foodLoss;
         private static ConfigEntry<bool> _itemLoss;
-        private static Inventory _quickslotsOnDeath = null;
-        private static Inventory _equipmentslotsOnDeath = null;
+        private static Inventory _quickslotInventoryOnDeath = null;
         private void Awake()
         {
             _skillLoss = Config.Bind("General", "Skill loss", false, "Lose skill / skill progression on death");
@@ -85,34 +84,37 @@ namespace SafeDeath
         [HarmonyPatch(typeof(Player), "OnDeath")]
         static class OnDeathPatch
         {
-            static void Prefix(Player __instance, List<Player.Food> ___m_foods, out List<Player.Food> __state)
+            private class CustomState
             {
-                __state = new List<Player.Food>(___m_foods);
-                
-                if (_itemLoss.Value)
-                    return;
-
-                var quickslots = __instance.GetQuickSlotInventory();
-                _quickslotsOnDeath = new Inventory("SavedQuickslots", null, quickslots.GetWidth(), quickslots.GetHeight());
-                _quickslotsOnDeath.MoveAll(quickslots); // "Item is not in this Inventory" message. current idea is that it is probably in the player inventory itself but the reference of the data is shared in the quickslotinventory
-
-                // inventory full
-                var equipedSlots = __instance.GetEquipmentSlotInventory();
-                //if(__instance.GetInventory().GetEmptySlots() < equipedSlots.GetAllItems().Count) //check if equiped stuff disappears when invent is full or when there's just not enough space for everything / or inbetween
-                Debug.Log($"Slots used percentage: {__instance.GetInventory().SlotsUsedPercentage()}");
-                if ((int)__instance.GetInventory().SlotsUsedPercentage() == 100)
-                {
-                    _equipmentslotsOnDeath = new Inventory("SavedEquipedslots", null, equipedSlots.GetWidth(), equipedSlots.GetHeight());
-                    _equipmentslotsOnDeath.MoveAll(equipedSlots);
-                    LogInventory(_equipmentslotsOnDeath, "_equipmentslotsOnDeath");
-                }
-
+                public List<Player.Food> Foods;
+                public Inventory QuickSlotsInventory;
             }
 
-            static void Postfix(Player __instance, ref List<Player.Food> ___m_foods, List<Player.Food> __state)
+            static void Prefix(Player __instance, List<Player.Food> ___m_foods, out CustomState __state)
+            {
+                var quickslots = __instance.GetQuickSlotInventory();
+
+                LogInventory(quickslots, "quickslots");
+
+                Inventory savedQuickslots = new Inventory("SavedQuickslots", null, quickslots.GetWidth(), quickslots.GetHeight());
+                savedQuickslots.MoveAll(quickslots); // "Item is not in this Inventory" message. current idea is that it is probably in the player inventory itself but the reference of the data is shared in the quickslotinventory
+
+                LogInventory(quickslots, "quickslots");
+                LogInventory(savedQuickslots, "savedQuickslots");
+
+                __state = new CustomState
+                {
+                    Foods = new List<Player.Food>(___m_foods),
+                    QuickSlotsInventory = savedQuickslots
+                };
+
+                _quickslotInventoryOnDeath = savedQuickslots;
+            }
+
+            static void Postfix(Player __instance, ref List<Player.Food> ___m_foods, CustomState __state)
             {
                 if (!_foodLoss.Value)
-                    ___m_foods = __state;
+                    ___m_foods = __state.Foods;
             }
         }
 
@@ -120,22 +122,24 @@ namespace SafeDeath
         [HarmonyPatch(typeof(Game), "SpawnPlayer")]
         static class SpawnPlayerPatch
         {
-            static void Postfix(Player __instance)
+            static void Postfix()
             {
-                if (_itemLoss.Value)
-                    return;
-
-                if (_quickslotsOnDeath != null && _quickslotsOnDeath.GetAllItems().Count > 0)
+                Debug.Log($"SpawnPlayer BEFORE check");
+                if (!_itemLoss.Value && _quickslotInventoryOnDeath != null)
                 {
-                    __instance.GetQuickSlotInventory().MoveAll(_quickslotsOnDeath);
-                    __instance.Extended().Save();
-                }
-                //_quickslotInventoryOnDeath = null; // breaks for some reason, but there should really be a way to reset this here (maybe check the size of the contents, should be 0 since everything's been moved)
+                    Debug.Log($"SpawnPlayer AFTER check");
 
-                if (_equipmentslotsOnDeath != null && _equipmentslotsOnDeath.GetAllItems().Count > 0)
-                {
-                    __instance.GetEquipmentSlotInventory().MoveAll(_equipmentslotsOnDeath);
-                    __instance.Extended().Save();
+                    LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
+                    LogInventory(_quickslotInventoryOnDeath, "_SAVEME");
+
+                    Debug.Log($"OnDeath POST fix MOVING");
+
+                    Player.m_localPlayer.GetQuickSlotInventory().MoveAll(_quickslotInventoryOnDeath);
+                    Player.m_localPlayer.Extended().Save();
+                    //_quickslotInventoryOnDeath = null;
+
+                    LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
+                    LogInventory(_quickslotInventoryOnDeath, "_SAVEME");
                 }
             }
         }
