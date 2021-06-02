@@ -7,8 +7,8 @@
     <ProjectGuid>{215D162E-DEA6-4C04-B4FA-BFCC7D711102}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>GenericObjectDestroyer</RootNamespace>
-    <AssemblyName>GenericObjectDestroyer</AssemblyName>
+    <RootNamespace>GenericObjectRemover</RootNamespace>
+    <AssemblyName>GenericObjectRemover</AssemblyName>
     <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>

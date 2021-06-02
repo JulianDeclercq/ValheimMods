@@ -13,7 +13,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SafeDeath", "..\SafeDeath\S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GlowingMushroomRemover", "..\GlowingMushroomRemover\GlowingMushroomRemover.csproj", "{5371BBC4-49EB-4358-94F5-D8F6541DA2E6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericObjectRemover", "..\GenericObjectDestroyer\GenericObjectRemover.csproj", "{215D162E-DEA6-4C04-B4FA-BFCC7D711102}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericObjectRemover", "..\GenericObjectRemover\GenericObjectRemover.csproj", "{215D162E-DEA6-4C04-B4FA-BFCC7D711102}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
