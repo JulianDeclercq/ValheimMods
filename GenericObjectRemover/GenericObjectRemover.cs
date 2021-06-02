@@ -12,21 +12,11 @@ namespace GenericObjectRemover
     [BepInPlugin("juliandeclercq.GenericObjectRemover", "Generic Object Remover", "1.0.0")]
     public class GenericObjectRemover : BaseUnityPlugin
     {
-        private static Dictionary<string, ZNetView> _removables = new Dictionary<string, ZNetView>();
-
+        private static string _noHoverHierarchy = "nothing";
+        private static List<string> _printQueue = new List<string>();
         private void Awake()
         {
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
-        }
-
-        private void Update()
-        {
-            return;
-            var hovering = Traverse.Create(Player.m_localPlayer).Field("m_hovering").GetValue() as GameObject;
-            if (hovering != null)
-                Debug.Log($"Currently hovering over {InspectObject(hovering)}");
-            else
-                Debug.Log("No hovering object");
         }
 
         [HarmonyPatch(typeof(Console), "InputText")]
@@ -51,15 +41,14 @@ namespace GenericObjectRemover
 
                 if (cmd.Equals(inspect.ToLower()))
                 {
-                    var hovering = Traverse.Create(Player.m_localPlayer).Field("m_hovering").GetValue() as GameObject;
-                    if (hovering != null)
-                    {
-                        Traverse.Create(__instance).Method("AddString", new object[] { $"Currently hovering over {InspectObject(hovering)}" }).GetValue();
+                    InspectHoveringObject(out string hierarchy, print : true);
+                    Traverse.Create(__instance).Method("AddString", new object[] { $"Currently hovering over {hierarchy}" }).GetValue();
+                    
+                    foreach (var printable in _printQueue)
+                        Traverse.Create(Console.instance).Method("AddString", new object[] { $"Removable object found: {printable}" }).GetValue();
 
-                        foreach (var removable in _removables)
-                            Traverse.Create(Console.instance).Method("AddString", new object[] { $"Removable object found: {removable.Key}" }).GetValue();
-                    }
-                    else Traverse.Create(__instance).Method("AddString", new object[] { $"No inspectable item detected" }).GetValue();
+                    _printQueue.Clear();
+
                     return;
                 }
 
@@ -88,23 +77,49 @@ namespace GenericObjectRemover
                 }
             }
         }
-
-        private static string InspectObject(GameObject go)
+       
+        private static ZNetView InspectHoveringObject(out string hierarchy, bool print = false)
         {
-            // clear the removables from last inspect
-            _removables.Clear();
-
-            string fullName = go.name;
-            while (go.transform.parent != null)
+            var current = Traverse.Create(Player.m_localPlayer).Field("m_hovering").GetValue() as GameObject;
+            if (current == null)
             {
-                var znetView = go.GetComponent<ZNetView>();
-                if (znetView != null)
-                    _removables[TrimTrailingParentheses(go.name).ToLower()] = znetView;
-                
-                go = go.transform.parent.gameObject;
-                fullName = $"{go.name}/{fullName}";
+                hierarchy = _noHoverHierarchy;
+                return null;
             }
-            return fullName;
+
+            hierarchy = current.name;
+            ZNetView removable = null;
+            while (current.transform.parent != null)
+            {
+                var view = current.GetComponent<ZNetView>();
+                if (view != null)
+                {
+                    if (removable != null)
+                        Traverse.Create(Console.instance).Method("AddString", new object[] { $"More than one removable found in an object that was looked at, please report this on the mod page." }).GetValue();
+                    
+                    removable = view;
+
+                    if (print)
+                        _printQueue.Add(CustomFormat(removable.gameObject.name));
+                }
+                current = current.transform.parent.gameObject;
+                hierarchy = $"{current.name}/{hierarchy}";
+            }
+
+            return removable;
+        }
+        
+        private static void RemoveObject(string objectName)
+        {
+            var removable = InspectHoveringObject(out string hierarchy);
+            if (hierarchy.Equals(_noHoverHierarchy) || !objectName.ToLower().Equals(CustomFormat(removable.gameObject.name)))
+            {
+                Traverse.Create(Console.instance).Method("AddString", new object[] { $"Couldn't find removable object {objectName} where player is looking." }).GetValue();
+                return;
+            }
+
+            removable.Destroy();
+            Traverse.Create(Console.instance).Method("AddString", new object[] { $"Removed: {objectName}" }).GetValue();
         }
 
         private static void InspectRadius(float radius)
@@ -118,7 +133,7 @@ namespace GenericObjectRemover
                 {
                     if (current.GetComponent<ZNetView>() != null)
                     {
-                        string name = TrimTrailingParentheses(current.gameObject.name.ToLower());
+                        string name = CustomFormat(current.gameObject.name);
                         if (inRadius.ContainsKey(name))
                         {
                             inRadius[name]++;
@@ -128,7 +143,6 @@ namespace GenericObjectRemover
                             inRadius[name] = 1;
                         }
                     }
-                    
                     current = current.parent;
                 }
             }
@@ -137,19 +151,6 @@ namespace GenericObjectRemover
                 Traverse.Create(Console.instance).Method("AddString", new object[] { $"Found removable: {removable.Value}x {removable.Key} (radius = {radius})" }).GetValue();
         }
 
-        private static void RemoveObject(string objectName)
-        {
-            ZNetView removable;
-            if (!_removables.TryGetValue(objectName, out removable))
-            {
-                Traverse.Create(Console.instance).Method("AddString", new object[] { $"No removable found with name: {objectName}" }).GetValue();
-                return;
-            }
-
-            removable.Destroy();
-            _removables.Remove(objectName);
-            Traverse.Create(Console.instance).Method("AddString", new object[] { $"Removed: {objectName}" }).GetValue();
-        }
 
         private static void RemoveObjectRadius(string objectName, float radius)
         {
@@ -171,7 +172,7 @@ namespace GenericObjectRemover
             Traverse.Create(Console.instance).Method("AddString", new object[] { $"Removed {deletionCounter}x {objectName} (radius = {radius})" }).GetValue();
         }
 
-        private static string TrimTrailingParentheses(string input)
+        private static string CustomFormat(string input)
         {
             int startingIdx = input.IndexOf('(');
             if (startingIdx == -1)
@@ -182,7 +183,7 @@ namespace GenericObjectRemover
             if (endingIdx == -1)
                 return input;
 
-            return input.Substring(0, startingIdx);
+            return input.Substring(0, startingIdx).ToLower();
         }
     }
 }
