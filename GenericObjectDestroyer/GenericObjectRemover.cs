@@ -8,7 +8,7 @@ namespace GenericObjectDestroyer
 {
     [BepInProcess("valheim.exe")]
     [BepInPlugin("juliandeclercq.GenericObjectDestroyer", "Generic Object Destroyer", "1.0.0")]
-    public class GenericObjectDestroyer : BaseUnityPlugin
+    public class GenericObjectRemover : BaseUnityPlugin
     {
         private static Dictionary<string, ZNetView> _destroyables = new Dictionary<string, ZNetView>();
 
