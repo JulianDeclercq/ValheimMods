@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SafeDeath", "..\SafeDeath\S
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GlowingMushroomRemover", "..\GlowingMushroomRemover\GlowingMushroomRemover.csproj", "{5371BBC4-49EB-4358-94F5-D8F6541DA2E6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GenericObjectDestroyer", "..\GenericObjectDestroyer\GenericObjectDestroyer.csproj", "{215D162E-DEA6-4C04-B4FA-BFCC7D711102}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -39,6 +41,10 @@ Global
 		{5371BBC4-49EB-4358-94F5-D8F6541DA2E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5371BBC4-49EB-4358-94F5-D8F6541DA2E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5371BBC4-49EB-4358-94F5-D8F6541DA2E6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{215D162E-DEA6-4C04-B4FA-BFCC7D711102}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{215D162E-DEA6-4C04-B4FA-BFCC7D711102}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{215D162E-DEA6-4C04-B4FA-BFCC7D711102}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{215D162E-DEA6-4C04-B4FA-BFCC7D711102}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
