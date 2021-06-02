@@ -1,4 +1,6 @@
-﻿using BepInEx;
+﻿//#define QUICKSLOTS
+
+using BepInEx;
 using BepInEx.Configuration;
 using EquipmentAndQuickSlots;
 using HarmonyLib;
@@ -15,7 +17,10 @@ namespace SafeDeath
         private static ConfigEntry<bool> _skillLoss;
         private static ConfigEntry<bool> _foodLoss;
         private static ConfigEntry<bool> _itemLoss;
+
+#if QUICKSLOTS
         private static Inventory _quickslotInventoryOnDeath = null;
+#endif
         private void Awake()
         {
             _skillLoss = Config.Bind("General", "Skill loss", false, "Lose skill / skill progression on death");
@@ -26,8 +31,8 @@ namespace SafeDeath
 
         private void Update()
         {
-            if (Input.GetKeyDown(KeyCode.F10))
-                LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
+            //if (Input.GetKeyDown(KeyCode.F10))
+            //    LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
         }
 
         private static void LogInventory(Inventory inventory, string name)
@@ -84,64 +89,39 @@ namespace SafeDeath
         [HarmonyPatch(typeof(Player), "OnDeath")]
         static class OnDeathPatch
         {
-            private class CustomState
+            static void Prefix(Player __instance, List<Player.Food> ___m_foods, out List<Player.Food> __state)
             {
-                public List<Player.Food> Foods;
-                public Inventory QuickSlotsInventory;
-            }
-
-            static void Prefix(Player __instance, List<Player.Food> ___m_foods, out CustomState __state)
-            {
+#if QUICKSLOTS
                 var quickslots = __instance.GetQuickSlotInventory();
-
-                LogInventory(quickslots, "quickslots");
-
                 Inventory savedQuickslots = new Inventory("SavedQuickslots", null, quickslots.GetWidth(), quickslots.GetHeight());
                 savedQuickslots.MoveAll(quickslots); // "Item is not in this Inventory" message. current idea is that it is probably in the player inventory itself but the reference of the data is shared in the quickslotinventory
-
-                LogInventory(quickslots, "quickslots");
-                LogInventory(savedQuickslots, "savedQuickslots");
-
-                __state = new CustomState
-                {
-                    Foods = new List<Player.Food>(___m_foods),
-                    QuickSlotsInventory = savedQuickslots
-                };
-
                 _quickslotInventoryOnDeath = savedQuickslots;
+#endif
+                __state = new List<Player.Food>(___m_foods);
             }
 
-            static void Postfix(Player __instance, ref List<Player.Food> ___m_foods, CustomState __state)
+            static void Postfix(Player __instance, ref List<Player.Food> ___m_foods, List<Player.Food> __state)
             {
                 if (!_foodLoss.Value)
-                    ___m_foods = __state.Foods;
+                    ___m_foods = __state;
             }
         }
 
+#if QUICKSLOTS
         // Warning: ugly hack because it wasn't working
         [HarmonyPatch(typeof(Game), "SpawnPlayer")]
         static class SpawnPlayerPatch
         {
             static void Postfix()
             {
-                Debug.Log($"SpawnPlayer BEFORE check");
                 if (!_itemLoss.Value && _quickslotInventoryOnDeath != null)
                 {
-                    Debug.Log($"SpawnPlayer AFTER check");
-
-                    LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
-                    LogInventory(_quickslotInventoryOnDeath, "_SAVEME");
-
-                    Debug.Log($"OnDeath POST fix MOVING");
-
                     Player.m_localPlayer.GetQuickSlotInventory().MoveAll(_quickslotInventoryOnDeath);
                     Player.m_localPlayer.Extended().Save();
                     //_quickslotInventoryOnDeath = null;
-
-                    LogInventory(Player.m_localPlayer.GetQuickSlotInventory(), "quickslots");
-                    LogInventory(_quickslotInventoryOnDeath, "_SAVEME");
                 }
             }
         }
+#endif
     }
 }
