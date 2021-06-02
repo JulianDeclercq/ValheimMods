@@ -36,7 +36,7 @@ namespace GenericObjectRemover
             const string inspectRadius = "GORinspectradius";
             const string remove = "GORremove";
             const string removeRadius = "GORremoveradius";
-            static void Prefix(Console __instance)
+            static void Postfix(Console __instance)
             {
                 string cmd = __instance.m_input.text.ToLower();
 
@@ -45,7 +45,7 @@ namespace GenericObjectRemover
                     Traverse.Create(__instance).Method("AddString", new object[] {$"{inspect} - Check the currently looked at object for removables."}).GetValue();
                     Traverse.Create(__instance).Method("AddString", new object[] {$"{remove} [objectname] - Remove an object. (use GORinspect to retrieve a removable object's name)" }).GetValue();
                     Traverse.Create(__instance).Method("AddString", new object[] {$"{inspectRadius} [radius]- Check for removables in given radius around the player."}).GetValue();
-                    Traverse.Create(__instance).Method("AddString", new object[] {$"{removeRadius} [objectname] [radius] - Remove all objects with given name in given radius around the player.  (use GORinspect to retrieve a removable object's name)" }).GetValue();
+                    Traverse.Create(__instance).Method("AddString", new object[] {$"{removeRadius} [objectname] [radius] - Remove all objects with given name in given radius around the player. (use GORinspect to retrieve a removable object's name)" }).GetValue();
                     return;
                 }
 
