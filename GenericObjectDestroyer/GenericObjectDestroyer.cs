@@ -56,8 +56,9 @@ namespace GenericObjectDestroyer
                 }
                 else if (cmd.ToLower().StartsWith(destroy.ToLower()))
                 {
-                    DestroyObject(cmd.Substring(cmd.IndexOf(' ') + 1));
+                    DestroyObject(cmd.Substring(cmd.IndexOf(' ') + 1).ToLower());
                 }
+                // TODO: Radius destroy
             }
         }
 
@@ -71,7 +72,7 @@ namespace GenericObjectDestroyer
             {
                 var znetView = go.GetComponent<ZNetView>();
                 if (znetView != null)
-                    _destroyables[go.name] = znetView;
+                    _destroyables[TrimTrailingParentheses(go.name).ToLower()] = znetView;
                 
                 go = go.transform.parent.gameObject;
                 fullName = $"{go.name}/{fullName}";
@@ -89,18 +90,24 @@ namespace GenericObjectDestroyer
             }
 
             destroyable.Destroy();
+            _destroyables.Remove(objectName);
             Traverse.Create(Console.instance).Method("AddString", new object[] { $"Destroyed: {objectName}" }).GetValue();
         }
 
-        private static string GetFullName(GameObject go)
+        private static string TrimTrailingParentheses(string input)
         {
-            string name = go.name;
-            while (go.transform.parent != null)
-            {
-                go = go.transform.parent.gameObject;
-                name = go.name + "/" + name;
-            }
-            return name;
+            int startingIdx = input.IndexOf('(');
+            if (startingIdx == -1)
+                return input;
+
+            // avoid possible errors with naming inconsistencies
+            int endingIdx = input.IndexOf(')');
+            if (endingIdx == -1)
+                return input;
+
+            var output = input.Substring(0, startingIdx);
+            Debug.Log($"Trimmed {input} into {output}");
+            return output;
         }
     }
 }
