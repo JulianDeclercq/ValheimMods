@@ -2,6 +2,7 @@
 using HarmonyLib;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using UnityEngine;
@@ -13,8 +14,6 @@ namespace GenericObjectRemover
     [BepInPlugin("juliandeclercq.GenericObjectRemover", "Generic Object Remover", "1.1.0")]
     public class GenericObjectRemover : BaseUnityPlugin
     {
-        private const string _noHoverHierarchy = "nothing";
-        private static List<string> _printQueue = new List<string>();
         private void Awake()
         {
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
@@ -31,20 +30,10 @@ namespace GenericObjectRemover
             {
                 new ConsoleCommand($"{inspect}", "Check the currently looked at object for removables.", (ConsoleEventArgs args) =>
                 {
-                    args.Context.AddString($"arguments size: {args.Length}");
-                    for (int i = 0; i < args.Length; ++i)
-                        args.Context.AddString($"Arguments {args[i]}");
-
                     if (args.Length != 1)
                         return;
 
-                    InspectHoveringObject(out string hierarchy, print: true);
-                    args.Context.AddString($"Currently hovering over {hierarchy}");
-
-                    foreach (var printable in _printQueue)
-                        args.Context.AddString($"Removable object found: {printable}");
-
-                    _printQueue.Clear();
+                    InspectHoveringObject(print: true);
                 });
 
                 new ConsoleCommand($"{remove}", $"{remove} [objectname] - Remove an object. (use GORinspect to retrieve a removable object's name)", (ConsoleEventArgs args) =>
@@ -57,16 +46,11 @@ namespace GenericObjectRemover
                 
                 new ConsoleCommand($"{inspectRadius}", $"{inspectRadius} [radius] - Check for removables in given radius around the player.", (ConsoleEventArgs args) =>
                 {
-                    Traverse.Create(Console.instance).Method("Print", new object[] { $"PRINT TEST." }).GetValue();
-
                     if (args.Length != 2)
                         return;
 
                     if (int.TryParse(args[1], out int radius))
-                    {
-                        args.Context.AddString($"Calling InspectRadius with radius {radius}");
                         InspectRadius(radius);
-                    }
                 });
 
                 new ConsoleCommand($"{removeRadius}", $"{removeRadius} [objectname] [radius] - Remove all objects with given name in given radius around the player. (use GORinspect to retrieve a removable object's name)", (ConsoleEventArgs args) =>
@@ -80,38 +64,27 @@ namespace GenericObjectRemover
             }
         }
        
-        private static ZNetView InspectHoveringObject(out string hierarchy, bool print = false)
+        private static ZNetView InspectHoveringObject(bool print = false)
         {
             var current = Traverse.Create(Player.m_localPlayer).Field("m_hovering").GetValue() as GameObject;
-            if (current == null)
-            {
-                hierarchy = _noHoverHierarchy;
-                return null;
-            }
-
-            hierarchy = current.name;
-
-            var view = current.GetComponent<ZNetView>();
-            while (view == null && current.transform.parent != null)
-            {
-                current = current.transform.parent.gameObject;
-                view = current.GetComponent<ZNetView>();
-                hierarchy = $"{current.name}/{hierarchy}";
-            }
+            var view = current?.GetComponentInParent<ZNetView>();
 
             if (print)
-                _printQueue.Add(CustomFormat(view.gameObject.name));
+            {
+                if (view != null)
+                {
+                    Traverse.Create(Console.instance).Method("Print", new object[] { $"Player is hovering over {CustomFormat(view.gameObject.name)}." }).GetValue();
+                }
+                else Traverse.Create(Console.instance).Method("Print", new object[] { $"Player is not hovering over a removable object." }).GetValue();
+            }
 
-            //Traverse.Create(Console.instance).Method("Print", new object[] { $"InspectHoveringObject hierarchy: {hierarchy}" }).GetValue();
             return view;
         }
         
         private static void RemoveObject(string objectName)
         {
-            Traverse.Create(Console.instance).Method("Print", new object[] { $"Called RemoveObject for {objectName}." }).GetValue();
-            var removable = InspectHoveringObject(out string hierarchy);
-
-            if (hierarchy.Equals(_noHoverHierarchy))
+            var removable = InspectHoveringObject();
+            if (removable == null)
             {
                 Traverse.Create(Console.instance).Method("Print", new object[] { $"Player is not hovering over a removable object." }).GetValue();
                 return;
@@ -131,37 +104,32 @@ namespace GenericObjectRemover
 
         private static void InspectRadius(int radius)
         {
-            Traverse.Create(Console.instance).Method("Print", new object[] { $"Called InspectRadius with radius {radius}" }).GetValue();
-            var inRadius = new Dictionary<string, int>();
+            var inRadius = new HashSet<ZNetView>();
+            var count = new Dictionary<string, int>();
+         
             Collider[] hitColliders = Physics.OverlapSphere(Player.m_localPlayer.transform.position, radius, ~0);
-            Traverse.Create(Console.instance).Method("Print", new object[] { $"{hitColliders.Length} hitcolliders found" }).GetValue();
             foreach (var hitCollider in hitColliders)
             {
-                Transform current = hitCollider.transform;
-                while (current.parent != null)
+                var view = hitCollider.GetComponentInParent<ZNetView>();
+                if (view == null)
+                    continue;
+
+                // prevent adding duplicates if hitcolliders were nested
+                if (inRadius.Add(view))
                 {
-                    if (current.GetComponent<ZNetView>() != null)
-                    {
-                        string name = CustomFormat(current.gameObject.name);
-                        if (inRadius.ContainsKey(name))
-                        {
-                            inRadius[name]++;
-                        }
-                        else
-                        {
-                            inRadius[name] = 1;
-                        }
-                    }
-                    current = current.parent;
+                    var key = CustomFormat(view.gameObject.name);
+                    count.TryGetValue(key, out int currentCount);
+                    count[key] = currentCount + 1;
                 }
             }
 
-            foreach (var removable in inRadius)
+            foreach (var removable in count)
                 Traverse.Create(Console.instance).Method("Print", new object[] { $"Found removable: {removable.Value}x {removable.Key} (radius = {radius})" }).GetValue();
         }
 
         private static void RemoveObjectRadius(string objectName, int radius)
         {
+            return;
             int deletionCounter = 0;
             Collider[] hitColliders = Physics.OverlapSphere(Player.m_localPlayer.transform.position, radius, ~0);
             foreach (var hitCollider in hitColliders)
