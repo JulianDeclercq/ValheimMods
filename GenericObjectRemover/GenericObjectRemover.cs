@@ -23,57 +23,71 @@ namespace GenericObjectRemover
         static class InputText_Patch
         {
             const string inspect = "GORinspect";
-            const string inspectRadius = "GORinspectradius";
             const string remove = "GORremove";
-            const string removeRadius = "GORremoveradius";
             static void Postfix(Terminal __instance)
             {
-                new ConsoleCommand($"{inspect}", "Check the currently looked at object for removables.", (ConsoleEventArgs args) =>
+                new ConsoleCommand($"{inspect}", $"Check the currently looked at object for removables. \n" +
+                    $"{inspect} [radius] - Check for removables in given radius around the player.", (ConsoleEventArgs args) =>
                 {
-                    if (args.Length != 1)
-                        return;
-
-                    var hovering = InspectHoveringObject();
-                    ConsolePrint(hovering == null ? "Player is not hovering over a removable object." : $"Player is hovering over {CustomFormat(hovering.gameObject.name)}.");
+                    switch(args.Length)
+                    {
+                        case 1:
+                            var hovering = HoveringObjectRemovable();
+                            ConsolePrint(hovering == null ? "Player is not hovering over a removable object." : $"Player is hovering over {CustomFormat(hovering.gameObject.name)}.");
+                            break;
+                        case 2:
+                            if (int.TryParse(args[1], out int radius))
+                                InspectRadius(radius);
+                            break;
+                        default:
+                            ConsolePrint($"Invalid amount of arguments for {inspect}. Expected syntax: |{inspect}| or |{inspect} [radius]|.");
+                            break;
+                    }
                 });
 
-                new ConsoleCommand($"{remove}", $"{remove} [objectname] - Remove an object. (use GORinspect to retrieve a removable object's name)", (ConsoleEventArgs args) =>
+                new ConsoleCommand($"{remove}", "[objectname] - Remove an object. (use GORinspect to retrieve a removable object's name) \n" +
+                    $"{remove} [objectname] [radius] - Remove all objects with given name in given radius around the player.", (ConsoleEventArgs args) =>
                 {
-                    if (args.Length < 2)
-                        return;
-
-                    RemoveObject(args[1].ToLower());
-                });
-                
-                new ConsoleCommand($"{inspectRadius}", $"{inspectRadius} [radius] - Check for removables in given radius around the player.", (ConsoleEventArgs args) =>
-                {
-                    if (args.Length != 2)
-                        return;
-
-                    if (int.TryParse(args[1], out int radius))
-                        InspectRadius(radius);
-                });
-
-                new ConsoleCommand($"{removeRadius}", $"{removeRadius} [objectname] [radius] - Remove all objects with given name in given radius around the player. (use GORinspect to retrieve a removable object's name)", (ConsoleEventArgs args) =>
-                {
-                    if (args.Length < 3)
-                        return;
-
-                    if (int.TryParse(args[2], out int radius))
-                        RemoveObjectRadius(args[1], radius);
+                    switch (args.Length)
+                    {
+                        case 2:
+                            RemoveObject(args[1].ToLower());
+                            break;
+                        case 3:
+                            if (int.TryParse(args[2], out int radius))
+                                RemoveObjectRadius(args[1], radius);
+                            break;
+                        default:
+                            ConsolePrint($"Invalid amount of arguments for {remove}. Expected syntax: |{remove} [objectname]| or |{remove} [objectname] [radius]|.");
+                            break;
+                    }
                 });
             }
         }
        
-        private static ZNetView InspectHoveringObject()
+        private static ZNetView HoveringObjectRemovable()
         {
             var current = Traverse.Create(Player.m_localPlayer).Field("m_hovering").GetValue() as GameObject;
             return current?.GetComponentInParent<ZNetView>();
         }
+        private static HashSet<ZNetView> RemovablesInRadius(int radius)
+        {
+            var inRadius = new HashSet<ZNetView>();
+
+            Collider[] hitColliders = Physics.OverlapSphere(Player.m_localPlayer.transform.position, radius, ~0);
+            foreach (var hitCollider in hitColliders)
+            {
+                var view = hitCollider.GetComponentInParent<ZNetView>();
+                if (view != null)
+                    inRadius.Add(view);
+            }
+
+            return inRadius;
+        }
         
         private static void RemoveObject(string objectName)
         {
-            var removable = InspectHoveringObject();
+            var removable = HoveringObjectRemovable();
             if (removable == null)
             {
                 ConsolePrint($"Player is not hovering over a removable object.");
@@ -90,21 +104,6 @@ namespace GenericObjectRemover
 
             removable.Destroy();
             ConsolePrint($"Removed: {objectName}");
-        }
-
-        private static HashSet<ZNetView> RemovablesInRadius(int radius)
-        {
-            var inRadius = new HashSet<ZNetView>();
-
-            Collider[] hitColliders = Physics.OverlapSphere(Player.m_localPlayer.transform.position, radius, ~0);
-            foreach (var hitCollider in hitColliders)
-            {
-                var view = hitCollider.GetComponentInParent<ZNetView>();
-                if (view != null)
-                    inRadius.Add(view);
-            }
-
-            return inRadius;
         }
 
         private static void InspectRadius(int radius)
