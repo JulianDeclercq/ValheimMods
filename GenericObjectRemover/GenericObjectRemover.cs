@@ -33,7 +33,8 @@ namespace GenericObjectRemover
                     if (args.Length != 1)
                         return;
 
-                    InspectHoveringObject(print: true);
+                    var hovering = InspectHoveringObject();
+                    ConsolePrint(hovering == null ? "Player is not hovering over a removable object." : $"Player is hovering over {CustomFormat(hovering.gameObject.name)}.");
                 });
 
                 new ConsoleCommand($"{remove}", $"{remove} [objectname] - Remove an object. (use GORinspect to retrieve a removable object's name)", (ConsoleEventArgs args) =>
@@ -64,21 +65,10 @@ namespace GenericObjectRemover
             }
         }
        
-        private static ZNetView InspectHoveringObject(bool print = false)
+        private static ZNetView InspectHoveringObject()
         {
             var current = Traverse.Create(Player.m_localPlayer).Field("m_hovering").GetValue() as GameObject;
-            var view = current?.GetComponentInParent<ZNetView>();
-
-            if (print)
-            {
-                if (view != null)
-                {
-                    Traverse.Create(Console.instance).Method("Print", new object[] { $"Player is hovering over {CustomFormat(view.gameObject.name)}." }).GetValue();
-                }
-                else Traverse.Create(Console.instance).Method("Print", new object[] { $"Player is not hovering over a removable object." }).GetValue();
-            }
-
-            return view;
+            return current?.GetComponentInParent<ZNetView>();
         }
         
         private static void RemoveObject(string objectName)
@@ -86,66 +76,61 @@ namespace GenericObjectRemover
             var removable = InspectHoveringObject();
             if (removable == null)
             {
-                Traverse.Create(Console.instance).Method("Print", new object[] { $"Player is not hovering over a removable object." }).GetValue();
+                ConsolePrint($"Player is not hovering over a removable object.");
                 return;
             }
 
-            string received = objectName.ToLower();
-            string expected = CustomFormat(removable.gameObject.name);
-            if (!received.Equals(expected))
+            string lhs = CustomFormat(objectName);
+            string rhs = CustomFormat(removable.gameObject.name);
+            if (!lhs.Equals(rhs))
             {
-                Traverse.Create(Console.instance).Method("Print", new object[] { $"Couldn't remove object. Received |{received}| expected |{expected}|" }).GetValue();
+                ConsolePrint($"Couldn't remove object. Received |{lhs}| expected |{rhs}|");
                 return;
             }
 
             removable.Destroy();
-            Traverse.Create(Console.instance).Method("Print", new object[] { $"Removed: {objectName}" }).GetValue();
+            ConsolePrint($"Removed: {objectName}");
         }
 
-        private static void InspectRadius(int radius)
+        private static HashSet<ZNetView> RemovablesInRadius(int radius)
         {
             var inRadius = new HashSet<ZNetView>();
-            var count = new Dictionary<string, int>();
-         
+
             Collider[] hitColliders = Physics.OverlapSphere(Player.m_localPlayer.transform.position, radius, ~0);
             foreach (var hitCollider in hitColliders)
             {
                 var view = hitCollider.GetComponentInParent<ZNetView>();
-                if (view == null)
-                    continue;
+                if (view != null)
+                    inRadius.Add(view);
+            }
 
-                // prevent adding duplicates if hitcolliders were nested
-                if (inRadius.Add(view))
-                {
-                    var key = CustomFormat(view.gameObject.name);
-                    count.TryGetValue(key, out int currentCount);
-                    count[key] = currentCount + 1;
-                }
+            return inRadius;
+        }
+
+        private static void InspectRadius(int radius)
+        {
+            var count = new Dictionary<string, int>();
+            var inRadius = RemovablesInRadius(radius);
+         
+            foreach (var removable in inRadius)
+            {
+                var key = CustomFormat(removable.gameObject.name);
+                count.TryGetValue(key, out int currentCount);
+                count[key] = currentCount + 1;
             }
 
             foreach (var removable in count)
-                Traverse.Create(Console.instance).Method("Print", new object[] { $"Found removable: {removable.Value}x {removable.Key} (radius = {radius})" }).GetValue();
+                ConsolePrint($"Found removable: {removable.Value}x {removable.Key} (radius = {radius})");
         }
 
         private static void RemoveObjectRadius(string objectName, int radius)
         {
-            return;
-            int deletionCounter = 0;
-            Collider[] hitColliders = Physics.OverlapSphere(Player.m_localPlayer.transform.position, radius, ~0);
-            foreach (var hitCollider in hitColliders)
-            {
-                Transform current = hitCollider.transform;
-                while (current.parent != null)
-                {
-                    if (current.gameObject.name.ToLower().StartsWith(objectName))
-                    {
-                        current.GetComponent<ZNetView>()?.Destroy();
-                        ++deletionCounter;
-                    }
-                    current = current.parent;
-                }
-            }
-            Traverse.Create(Console.instance).Method("Print", new object[] { $"Removed {deletionCounter}x {objectName} (radius = {radius})" }).GetValue();
+            var target = CustomFormat(objectName);
+            var removablesInRadius = RemovablesInRadius(radius).Where(x => CustomFormat(x.gameObject.name).Equals(target));
+            foreach(var removable in removablesInRadius)
+                removable.Destroy();
+
+            ConsolePrint($"Removed {removablesInRadius.Count()}x {target} (radius = {radius})");
         }
 
         private static string CustomFormat(string input)
@@ -160,6 +145,11 @@ namespace GenericObjectRemover
                 return input;
 
             return input.Substring(0, startingIdx).ToLower();
+        }
+
+        private static void ConsolePrint(string line)
+        {
+            Traverse.Create(Console.instance).Method("Print", new object[] { line }).GetValue();
         }
     }
 }
