@@ -4,11 +4,12 @@ using HarmonyLib;
 using System.Reflection;
 using UnityEngine;
 using UnityEngine.UI;
+using static Terminal;
 
 namespace ValheimMods
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.NeverEncumbered", "Never Encumbered", "1.0.2")]
+    [BepInPlugin("juliandeclercq.NeverEncumbered", "Never Encumbered", "1.1.0")]
     public class NeverEncumbered : BaseUnityPlugin
     {
         private static ConfigEntry<bool> _neverEncumbered;
@@ -96,34 +97,24 @@ namespace ValheimMods
             }
         }
 
-        [HarmonyPatch(typeof(Console), "InputText")]
+        [HarmonyPatch(typeof(Terminal), "InitTerminal")]
         static class InputText_Patch
         {
-            const string commandEncumber = "toggle encumber";
-            const string commandAutopickup = "toggle autopickuppastlimit";
-            static void Prefix(Console __instance)
+            const string commandEncumber = "NEencumbered";
+            const string commandAutopickup = "NEautopickuppastlimit";
+            static void Postfix(Terminal __instance)
             {
-                string cmd = __instance.m_input.text;
-
-                if (cmd.StartsWith("help"))
-                {
-                    Traverse.Create(__instance).Method("AddString", new object[] { commandEncumber }).GetValue();
-                    Traverse.Create(__instance).Method("AddString", new object[] { commandAutopickup }).GetValue();
-                    return;
-                }
-
-                if (cmd.ToLower().Equals(commandEncumber.ToLower()))
+                new ConsoleCommand($"{commandEncumber}", "Enables/disables overencumber.", (ConsoleEventArgs args) =>
                 {
                     _neverEncumbered.Value = !_neverEncumbered.Value;
+                    ConsolePrint($"toggled encumber ({!_neverEncumbered.Value})"); // flip for "never" keyword
+                });
 
-                    Traverse.Create(__instance).Method("AddString", new object[] { $"toggled encumber ({!_neverEncumbered.Value})" }).GetValue(); // flip for "never" keyword
-                }
-                else if (cmd.ToLower().Equals(commandAutopickup.ToLower()))
+                new ConsoleCommand($"{commandAutopickup}", "Enables/disables autopickup past weight limit", (ConsoleEventArgs args) =>
                 {
                     _autoPickupPastWeightlimit.Value = !_autoPickupPastWeightlimit.Value;
-
-                    Traverse.Create(__instance).Method("AddString", new object[] { $"toggled autopickuppastlimit ({_autoPickupPastWeightlimit.Value})" }).GetValue();
-                }
+                    ConsolePrint($"toggled autopickuppastlimit ({_autoPickupPastWeightlimit.Value})");
+                });
             }
         }
 
@@ -142,6 +133,11 @@ namespace ValheimMods
                 ___m_weight.text = num + "/" + num2;
                 return false; // stop executing prefixes and skip the original
             }
+        }
+
+        private static void ConsolePrint(string line)
+        {
+            Traverse.Create(Console.instance).Method("Print", new object[] { line }).GetValue();
         }
     }
 }
