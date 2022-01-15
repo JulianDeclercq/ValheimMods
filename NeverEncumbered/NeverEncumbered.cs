@@ -9,20 +9,20 @@ using static Terminal;
 namespace ValheimMods
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.NeverEncumbered", "Never Encumbered", "1.1.0")]
+    [BepInPlugin("juliandeclercq.NeverEncumbered", "Never Encumbered", "1.1.1")]
     public class NeverEncumbered : BaseUnityPlugin
     {
         private static ConfigEntry<bool> _neverEncumbered;
         private static ConfigEntry<bool> _autoPickupPastWeightlimit;
         private static ConfigEntry<bool> _encumberedUIFlicker;
-        private void Awake()
+        private void Start()
         {
             _neverEncumbered = Config.Bind("General", "Never encumbered", true, "Never become encumbered");
             _autoPickupPastWeightlimit = Config.Bind("General", "Auto pickup past weight limit", true, "Autopickup even if the weight limit has been passed");
             _encumberedUIFlicker = Config.Bind("General", "Inventory weight UI flicker", false, "Show the red UI flicker when over the weightlimit like the original");
             Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly(), null);
         }
-
+        
         [HarmonyPatch(typeof(Player), "IsEncumbered")]
         static class IsEncumberedPatch
         {
@@ -80,7 +80,7 @@ namespace ValheimMods
                     {
                         continue;
                     }
-
+                    
                     float num = Vector3.Distance(component.transform.position, vector);
                     if (!(num > ___m_autoPickupRange))
                     {

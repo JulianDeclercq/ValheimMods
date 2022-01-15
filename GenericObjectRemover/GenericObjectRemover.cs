@@ -9,7 +9,7 @@ using static Terminal;
 namespace GenericObjectRemover
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.GenericObjectRemover", "Generic Object Remover", "1.1.0")]
+    [BepInPlugin("juliandeclercq.GenericObjectRemover", "Generic Object Remover", "1.1.1")]
     public class GenericObjectRemover : BaseUnityPlugin
     {
         private void Awake()
@@ -134,12 +134,12 @@ namespace GenericObjectRemover
         {
             int startingIdx = input.IndexOf('(');
             if (startingIdx == -1)
-                return input;
+                return input.ToLower();
 
             // avoid possible errors with naming inconsistencies
             int endingIdx = input.IndexOf(')');
             if (endingIdx == -1)
-                return input;
+                return input.ToLower();
 
             return input.Substring(0, startingIdx).ToLower();
         }
