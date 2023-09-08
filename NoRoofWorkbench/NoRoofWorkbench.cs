@@ -5,7 +5,7 @@ using System.Reflection;
 namespace NoRoofWorkbench
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.NoRoofWorkbench", "No Roof Workbench", "1.0.0")]
+    [BepInPlugin("juliandeclercq.NoRoofWorkbench", "No Roof Workbench", "1.0.1")]
     public class NoRoofWorkbench : BaseUnityPlugin
     {
         private void Awake()

@@ -6,11 +6,12 @@ using System.Collections;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
+using static Terminal;
 
 namespace ExploreMap
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.ExploreMap", "Explore Map", "1.0.2.0")]
+    [BepInPlugin("juliandeclercq.ExploreMap", "Explore Map", "1.0.3.0")]
     public class ExploreMap : BaseUnityPlugin
     {
         private static BaseUnityPlugin instance;
@@ -54,17 +55,7 @@ namespace ExploreMap
 
             var data = File.ReadAllBytes(_cachedPath);
 
-            // hide the map to prevent a nasty icon bug
-            FieldInfo modeField = _miniMap.GetType().GetField("m_mode", BindingFlags.NonPublic | BindingFlags.Instance);
-            object mapModeNone = _miniMap.GetType().GetNestedType("MapMode", BindingFlags.NonPublic).GetField("None").GetValue(_miniMap);
-
-            // recreate Minimap::SetMapMode() functionality with parameter MapMode.None
-            modeField.SetValue(_miniMap, mapModeNone);
-            _miniMap.m_largeRoot.SetActive(false);
-            _miniMap.m_smallRoot.SetActive(false);
-
             yield return new WaitForEndOfFrame();
-
             Traverse.Create(_miniMap).Method("SetMapData", data).GetValue(); // getvalue is to ensure the method gets invoked
 
             // delete the saved map
@@ -122,25 +113,18 @@ namespace ExploreMap
             }
         }
 
-        [HarmonyPatch(typeof(Console), "InputText")]
+        [HarmonyPatch(typeof(Terminal), "InitTerminal")]
         static class InputText_Patch
         {
-            const string command = "toggle full map";
-            static void Prefix(Console __instance)
+            const string command = "toggleFullMap";
+
+            static void Postfix(Terminal __instance)
             {
-                string cmd = __instance.m_input.text;
-
-                if (cmd.StartsWith("help"))
-                {
-                    Traverse.Create(__instance).Method("AddString", new object[] { command }).GetValue();
-                    return;
-                }
-
-                if (cmd.ToLower().Equals(command.ToLower()))
+                new ConsoleCommand($"{command}", "Toggles the full map on or off", (ConsoleEventArgs args) =>
                 {
                     ExploreMapToggle();
-                    Traverse.Create(__instance).Method("AddString", new object[] { "Explore map toggled" }).GetValue();
-                }
+                    ConsolePrint($"toggled explore map ({_exploreFullMap.Value})");
+                });
             }
         }
 
@@ -152,6 +136,11 @@ namespace ExploreMap
                 LoadOriginalMap();
 
             Debug.Log("Explore map toggled");
+        }
+
+        private static void ConsolePrint(string line)
+        {
+            Traverse.Create(Console.instance).Method("Print", new object[] { line }).GetValue();
         }
     }
 }

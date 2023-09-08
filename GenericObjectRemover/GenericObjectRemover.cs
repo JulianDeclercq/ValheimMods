@@ -9,7 +9,7 @@ using static Terminal;
 namespace GenericObjectRemover
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.GenericObjectRemover", "Generic Object Remover", "1.1.1")]
+    [BepInPlugin("juliandeclercq.GenericObjectRemover", "Generic Object Remover", "1.1.2")]
     public class GenericObjectRemover : BaseUnityPlugin
     {
         private void Awake()

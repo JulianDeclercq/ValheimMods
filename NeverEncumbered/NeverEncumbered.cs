@@ -9,7 +9,7 @@ using static Terminal;
 namespace ValheimMods
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.NeverEncumbered", "Never Encumbered", "1.1.2")]
+    [BepInPlugin("juliandeclercq.NeverEncumbered", "Never Encumbered", "1.1.3")]
     public class NeverEncumbered : BaseUnityPlugin
     {
         private static ConfigEntry<bool> _neverEncumbered;
