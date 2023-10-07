@@ -11,7 +11,7 @@ using static Terminal;
 namespace ExploreMap
 {
     [BepInProcess("valheim.exe")]
-    [BepInPlugin("juliandeclercq.ExploreMap", "Explore Map", "1.0.3.0")]
+    [BepInPlugin("juliandeclercq.ExploreMap", "Explore Map", "1.0.4")]
     public class ExploreMap : BaseUnityPlugin
     {
         private static BaseUnityPlugin instance;
