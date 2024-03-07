@@ -1,8 +1,7 @@
-ValheimMods/bin/
 ValheimMods/libs/
-ValheimMods/obj/
+ValheimMods.sln.DotSettings.user
 */obj
 */bin
 libs/
-NeverEncumbered/.idea/
-NeverEncumbered/.vs/
+.idea/
+.vs/

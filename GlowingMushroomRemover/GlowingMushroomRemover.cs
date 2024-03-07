@@ -2,11 +2,8 @@
 using BepInEx.Configuration;
 using HarmonyLib;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using UnityEngine;
 
 namespace GlowingMushroomRemover
@@ -32,25 +29,25 @@ namespace GlowingMushroomRemover
         {
             static void Postfix(Player __instance)
             {
-                if (Input.GetKeyDown(_hotkey))
-                {
-                    Debug.Log("GlowingMushroomRemover hotkey pressed!");
+                if (!Input.GetKeyDown(_hotkey))
+                    return;
+                
+                Debug.Log("GlowingMushroomRemover hotkey pressed!");
 
-                    int deletionCounter = 0;
-                    Collider[] hitColliders = Physics.OverlapSphere(__instance.transform.position, _effectRadius.Value, ~0);
-                    foreach (var hitCollider in hitColliders)
-                    {
-                        if (hitCollider.gameObject.name.ToLower().Equals("cube"))
-                        {
-                            if (hitCollider.transform.parent.name.ToLower().StartsWith("glowingmushroom"))
-                            {
-                                hitCollider.transform.parent.GetComponent<ZNetView>()?.Destroy();
-                                ++deletionCounter;
-                            }
-                        }
-                    }
-                    Debug.Log($"Destroyed {deletionCounter} GlowingMushrooms");
+                var deletionCounter = 0;
+                var hitColliders = Physics.OverlapSphere(__instance.transform.position, _effectRadius.Value, ~0);
+                foreach (var hitCollider in hitColliders.Where(hc => IsGlowingMushroom(hc)))
+                {
+                    hitCollider.transform.parent.GetComponent<ZNetView>()?.Destroy();
+                    deletionCounter++;
                 }
+                
+                Debug.Log($"Destroyed {deletionCounter} GlowingMushrooms");
+            }
+
+            private static bool IsGlowingMushroom(Collider collider)
+            {
+                return collider.gameObject.name.ToLower().Equals("cube") && collider.transform.parent.name.ToLower().StartsWith("glowingmushroom");
             }
         }
     }
